@@ -45,3 +45,6 @@ def get_label_mappings() -> Tuple[dict, dict]:
     id2label = {0: "safe", 1: "toxic", 2: "hate"}
     label2id = {v: k for k, v in id2label.items()}
     return id2label, label2id
+
+def get_label_mappings():
+    return cfg.id2label, cfg.label2id
