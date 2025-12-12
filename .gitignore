@@ -34,11 +34,11 @@ env/
 # --- Jupyter ---
 .ipynb_checkpoints/
 
-# --- Data / artifacts (don’t commit datasets or big outputs) ---
+# --- Data / artifacts ---
 data/
 checkpoints/
 
-# keep small visuals, but don’t commit raw prediction dumps by default
+# keep images if you want, but not large dumps by default
 reports/*.csv
 reports/*.json
 reports/*.log

@@ -1,5 +1,5 @@
 """
-Utility helpers for TinyDetector.
+Utility helpers.
 """
 
 import random

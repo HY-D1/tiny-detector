@@ -13,4 +13,13 @@ WORKDIR /app
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy project metadata + source (kept small by .dockerignore)
+COPY pyproject.toml setup.cfg /app/
+COPY src /app/src
+COPY app /app/app
+COPY tests /app/tests
+
+# Install editable so `import src` works everywhere
+RUN pip install -e .
+
 CMD ["/bin/bash"]

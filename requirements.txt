@@ -6,3 +6,8 @@ pandas
 matplotlib
 notebook
 gradio
+
+fastapi
+uvicorn[standard]
+
+pytest
