@@ -154,6 +154,28 @@ Evaluation artifacts are written to `reports/`:
 - `reports/metrics.json`
 - `reports/confusion_matrix_val.png`
 - `reports/val_predictions.csv`
+### Evaluate a specific checkpoint (and compare runs)
+
+Default (uses `checkpoints/best_model.pt`):
+
+```bash
+python -m src.eval
+```
+Evaluate a specific checkpoint:
+```bash
+python -m src.eval --checkpoint checkpoints/best_model.pt --tag good
+```
+
+Compare two checkpoints:
+```bash
+python -m src.eval --checkpoint checkpoints/best_model.pt --tag good
+python -m src.eval --checkpoint checkpoints/best_model_collapsed.pt --tag collapsed
+```
+
+This writes tagged outputs to `reports/`:
+- `reports/metrics_<tag>.json`
+- `reports/confusion_matrix_<tag>.png`
+- `reports/val_predictions_<tag>.csv`
 
 ### Confidence thresholding
 
