@@ -1,27 +1,28 @@
 # TinyDetector: Lightweight Text Safety Classifier
 
-TinyDetector is a small PyTorch-based content safety classifier that flags harmful text (e.g., toxicity and identity-based hate) using a fine-tuned transformer model.
-
-The project is intentionally lightweight and modular: it includes data preparation, training, evaluation, and inference utilities, plus notebooks for exploration and failure analysis.
+TinyDetector is a small PyTorch-based text safety classifier that flags harmful content (e.g., toxicity and identity-based hate) using a fine-tuned transformer model. The repo includes data preparation, training, evaluation, inference utilities, and a simple demo/API for real-time testing.
 
 ## What it does
 
-TinyDetector maps input text into one of three labels:
+TinyDetector classifies text into one of three labels:
 
 - `safe`
 - `toxic`
 - `hate`
 
-It provides:
+Included components:
 
-- a training pipeline to fine-tune a transformer model (DistilBERT by default),
-- an evaluation script that generates metrics and a confusion matrix,
-- an inference API for running predictions on custom text,
-- notebooks for exploratory analysis and error inspection.
+- Training pipeline (fine-tunes a transformer classifier; DistilBERT by default)
+- Evaluation script (metrics + confusion matrix + per-example prediction export)
+- Inference utilities (Python API + confidence thresholding)
+- Gradio demo UI
+- FastAPI inference service
+- Notebooks for EDA and failure analysis
+- Basic tests
 
 ## Dataset and label mapping
 
-This project uses the **Jigsaw Toxic Comment Classification** dataset as the source of labeled comments. The original dataset includes multiple binary labels such as:
+This project uses the **Jigsaw Toxic Comment Classification** dataset as the source of labeled comments. The original dataset contains multiple binary labels such as:
 
 - `toxic`, `severe_toxic`, `obscene`, `threat`, `insult`, `identity_hate`
 
@@ -31,14 +32,14 @@ These are mapped into three coarse classes:
 - `hate` (2): `identity_hate == 1`
 - `toxic` (1): any other toxic label (e.g., `toxic`, `insult`, `obscene`, `threat`, `severe_toxic`) without identity hate
 
-A stratified train/validation split is created and saved as:
+A stratified train/validation split is saved to:
 
 - `data/processed/train.csv`
 - `data/processed/val.csv`
 
-## Installation and environment
+> Note: in most setups, raw/processed datasets are not tracked in git. If you keep them locally, make sure `data/` is ignored.
 
-### Docker (recommended)
+## Quickstart (Docker)
 
 Build the dev image:
 
@@ -51,9 +52,15 @@ Start a container with the repo mounted:
 ```base
 docker run --rm -it \
   -v "$(pwd)":/app \
-  -p 8888:8888 \
+  -p 7860:7860 \
+  -p 8000:8000 \
   tiny-detector:dev \
   bash
+```
+
+Inside the container, install the package in editable mode (recommended):
+```bash
+pip install -e .
 ```
 
 ### Training
@@ -80,30 +87,113 @@ python -m src.eval
 This prints:
 
 - overall accuracy
+- macro F1
 - per-class precision/recall/F1 (classification report)
 - confusion matrix (rows=true, cols=pred)
 
 and writes artifacts to:
+- `reports/metrics.json`
 - `reports/confusion_matrix_val.png`
 - `reports/val_predictions.csv`
 
-### Inference
+## Adjusting training and evaluation
 
-You can run quick predictions in Python:
+Most knobs live in `src/config.py`.
+
+Common changes:
+
+### Train on full dataset (not the small debug subset)
+
+In `src/config.py`:
+
+- Set `max_train_samples = None` to use all training rows.
+- Increase `num_epochs` if desired.
+
+Example:
+
+```python
+max_train_samples = None
+num_epochs = 3
+train_batch_size = 16
+learning_rate = 5e-5
+```
+
+### Change batch size / max token length
+```python
+train_batch_size = 16
+eval_batch_size = 32
+max_length = 128
+```
+
+If you hit out-of-memory (rare on CPU), reduce `train_batch_size` or `max_length`.
+
+### Change the base model
+```python
+model_name = "distilbert-base-uncased"
+```
+
+You can swap to a smaller model for faster iteration (quality may drop), e.g.:
+```python
+model_name = "prajjwal1/bert-tiny"
+```
+
+### Imbalance handling (hate is rare)
+
+You can try **one** of these at a time:
+- class-weighted loss: `use_class_weighted_loss = True`
+- weighted sampling: `use_weighted_sampler = True`
+
+Avoid enabling both together at first, as it can destabilize training.
+
+### Re-run evaluation after training
 ```bash
-from src.inference import load_model_and_tokenizer, predict
+python -m src.eval
+```
 
-tokenizer, model = load_model_and_tokenizer()  # loads checkpoints/best_model.pt by default
+Evaluation artifacts are written to `reports/`:
+- `reports/metrics.json`
+- `reports/confusion_matrix_val.png`
+- `reports/val_predictions.csv`
 
-texts = [
-    "I love this!",
-    "You are stupid.",
-    "All <group> should disappear."
-]
+### Confidence thresholding
 
-results = predict(texts, tokenizer, model)
-for r in results:
-    print(r["label_name"], r["probs"])
+`predict(..., threshold=...)` enables a simple abstention mode:
+
+- if the model's max probability is below `threshold`, the label is returned as `uncertain`
+
+This is useful when treating the classifier as a safety filter where low-confidence cases should be reviewed.
+
+### Demo (Gradio)
+
+Start the interactive demo:
+```basg
+python -m app.demo
+```
+
+Open:
+
+- http://localhost:7860
+
+### API (FastAPI)
+
+Start the API:
+```bash
+uvicorn app.api:app --host 0.0.0.0 --port 8000
+```
+
+Open:
+- Swagger UI: http://localhost:8000/docs
+
+Example request:
+```bash
+curl -s -X POST "http://localhost:8000/predict" \
+  -H "Content-Type: application/json" \
+  -d '{"texts":["I love this!", "You are stupid."], "threshold": 0.0}'
+```
+
+Testing
+```bash
+pytest -q
 ```
 
 ### Results and known limitations
@@ -122,13 +212,14 @@ Future work
     - oversampling,
     - threshold tuning / calibration,
     - alternative formulations (e.g., safe vs harmful binary classification).
-- Add a simple real-time UI (Gradio) for interactive testing.
-- Extend beyond text to multimodal safety signals (e.g., images) as a follow-up.
+- Add image safety classification as a follow-up (multimodal extension)
+- Add packaging improvements (e.g., versioned releases, pre-trained weights via GitHub Releases)
 
 ### Repository structure
+- `app/`: Gradio demo + FastAPI service
 - `src/`: model, datasets, tokenization, training, evaluation, inference
-- `data/`: raw and processed data (typically not tracked in git)
+- `data/`: raw and processed data (often not tracked in git)
 - `notebooks/`: EDA and failure analysis
 - `tests/`: basic tests
-- `reports/`: evaluation artifacts (confusion matrix, predictions)
+- `reports/`: evaluation artifacts (metrics, confusion matrix, predictions)
 - `checkpoints/`: saved model weights
