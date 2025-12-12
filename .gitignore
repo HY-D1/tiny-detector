@@ -1,0 +1,55 @@
+# --- OS / Editor ---
+.DS_Store
+._*
+.Trash-0/
+.Trashes/
+Thumbs.db
+
+.vscode/
+.idea/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Envs / secrets ---
+.venv/
+venv/
+env/
+.env
+.env.*
+*.pem
+*.key
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- Data / artifacts (don’t commit datasets or big outputs) ---
+data/
+checkpoints/
+
+# keep small visuals, but don’t commit raw prediction dumps by default
+reports/*.csv
+reports/*.json
+reports/*.log
+
+# --- Experiment trackers ---
+runs/
+wandb/
+lightning_logs/
+mlruns/
+
+# --- Gradio ---
+.gradio/
+flagged/
+gradio_cached_examples/
